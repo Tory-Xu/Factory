@@ -16,7 +16,7 @@ extension Container: AutoRegistering {
 
     public static func registerAllServices() {
 
-        print("AUTOREGISTRATION!!!")
+        print("[register] \(type(of: self)) AUTOREGISTRATION!!!")
 
         autoRegisteredService.register {
             MyService()

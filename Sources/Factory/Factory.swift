@@ -26,12 +26,21 @@
 
 import Foundation
 
-/// Factory manages the dependency injection process for a given object or service.
-public struct Factory<T> {
+public protocol RegisterContainer {
+    static var autoRegistrationCheck: Void { get }
+}
 
+public extension RegisterContainer {
+    static var autoRegistration: Void {
+        (self as? AutoRegistering.Type)?.registerAllServices()
+    }
+}
+
+/// Factory manages the dependency injection process for a given object or service.
+public struct RegisterFactory<T, C: RegisterContainer> {
     /// Initializes with factory closure that returns a new instance of the desired type. The scope defines the lifetime of that instance.
     public init(scope: SharedContainer.Scope? = .none, factory: @escaping () -> T) {
-        self.registration = Registration<Void, T>(id: UUID(), factory: factory, scope: scope)
+        self.registration = Registration<Void, T, C>(id: UUID(), factory: factory, scope: scope)
     }
 
     /// Resolves and returns an instance of the desired object type. This may be a new instance or one that was created previously and then cached,
@@ -58,7 +67,43 @@ public struct Factory<T> {
         registration.reset(options)
     }
 
-    private let registration: Registration<Void, T>
+    private let registration: Registration<Void, T, C>
+}
+
+
+/// Factory manages the dependency injection process for a given object or service.
+public struct Factory<T> {
+
+    /// Initializes with factory closure that returns a new instance of the desired type. The scope defines the lifetime of that instance.
+    public init(scope: SharedContainer.Scope? = .none, factory: @escaping () -> T) {
+        self.registration = Registration<Void, T, Container>(id: UUID(), factory: factory, scope: scope)
+    }
+
+    /// Resolves and returns an instance of the desired object type. This may be a new instance or one that was created previously and then cached,
+    /// depending on whether or not a scope was specified when the factory was created.
+    ///
+    /// Note return type could of T could still be <T?> depending on original Factory specification.
+    public func callAsFunction() -> T {
+        registration.resolve(())
+    }
+
+    /// Registers a new factory that will be used to create and return an instance of the desired object type.
+    ///
+    /// This registration overrides the original factory and its result will be returned on all new object resolutions. Registering a new
+    /// factory also clears the previous instance from the associated scope.
+    ///
+    /// All registrations are stored in SharedContainer.Registrations.
+    public func register(factory: @escaping () -> T) {
+        registration.register(factory: factory)
+    }
+
+    /// Deletes any registered factory override and resets this Factory to use the factory closure specified during initialization. Also
+    /// resets the scope so that a new instance of the original type will be returned on the next resolution.
+    public func reset(_ options: FactoryResetOptions = .all) {
+        registration.reset(options)
+    }
+
+    private let registration: Registration<Void, T, Container>
 }
 
 /// ParameterFactory manages the dependency injection process for a given object or service that needs one or more arguments
@@ -67,7 +112,7 @@ public struct ParameterFactory<P, T> {
 
     /// Initializes with factory closure that returns a new instance of the desired type. The scope defines the lifetime of that instance.
     public init(scope: SharedContainer.Scope? = .none, factory: @escaping (_ params: P) -> T) {
-        self.registration = Registration<P, T>(id: UUID(), factory: factory, scope: scope)
+        self.registration = Registration<P, T, Container>(id: UUID(), factory: factory, scope: scope)
     }
 
     /// Resolves and returns an instance of the desired object type. This may be a new instance or one that was created previously and then cached,
@@ -94,7 +139,7 @@ public struct ParameterFactory<P, T> {
         registration.reset(options)
     }
 
-    private let registration: Registration<P, T>
+    private let registration: Registration<P, T, Container>
 }
 
 /// Empty convenience class for user dependencies.
@@ -398,10 +443,10 @@ public protocol AutoRegistering {
     static func registerAllServices()
 }
 
-extension Container {
+extension Container: RegisterContainer {
     /// Statically allocated var performs automatic registration check one time and one time only.
-    fileprivate static var autoRegistrationCheck: Void  = {
-        (Container.self as? AutoRegistering.Type)?.registerAllServices()
+    public static var autoRegistrationCheck: Void  = {
+        autoRegistration
     }()
 }
 
@@ -414,7 +459,7 @@ private struct TypedFactory<P, T>: AnyFactory {
 }
 
 /// Internal registration manager for factories.
-private struct Registration<P, T> {
+private struct Registration<P, T, Container: RegisterContainer> {
 
     let id: UUID
     let factory: (P) -> T

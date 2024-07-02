@@ -34,6 +34,25 @@ class ContentModuleViewModel: ObservableObject {
         let network1 = Container.networkType() // uses CommonType iternally
         network1.test()
 
+        DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + 10, execute: DispatchWorkItem(block: {
+            
+            let simpleService11 = Business1Container.simpleService()
+            print("[register] simpleService11: \(simpleService11?.text())")
+            let simpleService12 = Business1Container.simpleService()
+            print("[register] simpleService12: \(simpleService12?.text())")
+
+        }))
+        
+        let simpleService21 = Business2Container.simpleService()
+        print("[register] simpleService21: \(simpleService21.text())")
+        let simpleService22 = Business2Container.simpleService()
+        print("[register] simpleService22: \(simpleService22.text())")
+        
+        let simpleService01 = Container.simpleService()
+        print("[register] simpleService01: \(simpleService01.text())")
+        let simpleService02 = Container.simpleService()
+        print("[register] simpleService02: \(simpleService02.text())")
+
         // test 2 - should reset and log Common
         print("\nMODULES: Testing reset to see original type, type == Common")
         Container.Registrations.reset()

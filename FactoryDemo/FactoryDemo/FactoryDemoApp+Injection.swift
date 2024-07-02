@@ -10,6 +10,46 @@ import Factory
 import Common
 import SwiftUI
 
+/// 中间件
+class Business1Container: RegisterContainer {
+    public static var autoRegistrationCheck: Void  = {
+        autoRegistration
+    }()
+
+    static let simpleService = RegisterFactory<MyServiceType?, Business1Container>(scope: .singleton) { nil }
+}
+
+/// 组件实现
+extension Business1Container: AutoRegistering {
+    static func registerAllServices() {
+        print("[register] \(type(of: self)) AUTOREGISTRATION!!!")
+        
+        simpleService.register {
+            MockService1()
+        }
+    }
+}
+
+/// 中间件
+class Business2Container: RegisterContainer {
+    public static var autoRegistrationCheck: Void  = {
+        autoRegistration
+    }()
+
+    static let simpleService = RegisterFactory<MyServiceType, Business2Container> { MyService() }
+}
+
+/// 组件实现
+extension Business2Container: AutoRegistering {
+    static func registerAllServices() {
+        print("[register] \(type(of: self)) AUTOREGISTRATION!!!")
+        
+        simpleService.register {
+            MockService1()
+        }
+    }
+}
+
 extension Container {
     static let simpleService = Factory { SimpleService() }
 }
